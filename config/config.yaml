@@ -2,12 +2,11 @@ input:
   category: "SURFACE"
   base_url: "https://legacy.bas.ac.uk/met/READER/ANTARCTIC_METEOROLOGICAL_DATA/SURFACE/"
   files:
-    - "Byrd_surface.dat"
-  file_extension: ".dat"
+    - "Adelaide_surface.dat"
+
 
 output:
   folder: "data/"
-  split: "monthly"
 
 schedule:
   enabled: false
@@ -66,26 +65,26 @@ metadata:
     temperature:
       long_name: "Air temperature"
       standard_name: "air_temperature"
-      units: "K"
-      units_metadata: "temperature: on_ scale"
+      units: "degC"
+      units_metadata: "temperature: on_scale"
       coverage_content_type: "physicalMeasurement"
 
     sea_pressure:
       long_name: "Sea level pressure"
       standard_name: "air_pressure_at_sea_level"
-      units: "Pa"
+      units: "hPa"
       coverage_content_type: "physicalMeasurement"
 
     station_pressure:
       long_name: "Station pressure"
       standard_name: "air_pressure"
-      units: "Pa"
+      units: "hPa"
       coverage_content_type: "physicalMeasurement"
 
     wind_speed:
       long_name: "Wind speed"
       standard_name: "wind_speed"
-      units: "m s-1"
+      units: "knots"
       coverage_content_type: "physicalMeasurement"
 
     wind_direction:

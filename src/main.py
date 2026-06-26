@@ -24,9 +24,8 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 STATE_FILE = os.path.join(BASE_DIR, config["state"]["file"])
 
-
 # =========================
-# STATE - Saves the stack of prosessed files 
+# STATE - Tracks remote source file changes to avoid unnecessary processing
 # =========================
 
 def load_state():
@@ -102,14 +101,7 @@ def read_dat_file(url):
     df = df.set_index("time")
     df = df.drop(columns=["year", "month", "day", "hour", "minute"])
 
-    # convert to units used in metadata
-    df["temperature"] = df["temperature"] + 273.15
-    df["sea_pressure"] = df["sea_pressure"] * 100
-    df["station_pressure"] = df["station_pressure"] * 100
-    df["wind_speed"] = df["wind_speed"] * 0.514444
-
     return df, station_name, latitude, longitude, height
-
 
 # =========================
 # APPLY METADATA
@@ -214,18 +206,34 @@ def save_monthly_netcdf(df, station_name, latitude, longitude, height, category)
         ds.attrs["time_coverage_resolution"] = "PT1H"
 
         category_folder = os.path.join(OUTPUT_DIR, category)
-        year_folder = os.path.join(category_folder, str(year))
+        station_folder = os.path.join(category_folder, safe_station_name)
+        year_folder = os.path.join(station_folder, str(year))
+
         os.makedirs(year_folder, exist_ok=True)
 
         filename = f"{safe_station_name}_{year}_{month:02d}.nc"
         output_path = os.path.join(year_folder, filename)
 
+        # if file already exists, compare before overwriting
+        if os.path.exists(output_path):
+            old_ds = xr.open_dataset(output_path)
+
+            old_df = old_ds.to_dataframe()
+            new_df = ds.to_dataframe()
+
+            if old_df.equals(new_df):
+                print(f"No changes in {filename}, skipping...")
+                old_ds.close()
+                continue
+
+            old_ds.close()
+
+        # save only if new or changed
         ds.to_netcdf(output_path)
         print(f"Saved {output_path}")
 
-
 # =========================
-# RUN ONCE - Pulls state and .dat files, checks if the current file is modified, skips the file if not modified. 
+# RUN ONCE - Processes source files and creates or updates monthly NetCDF files when remote data has changed
 # =========================
 
 def run_once():
