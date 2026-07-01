@@ -1,1 +1,4 @@
 *.nc
+.DS_Store
+.vscode/
+data/processed_files.json

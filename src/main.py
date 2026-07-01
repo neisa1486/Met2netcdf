@@ -47,12 +47,7 @@ def save_state(state):
 def get_dat_files():
     base_url = config["input"]["base_url"]
     files = config["input"]["files"]
-
-    urls = []
-    for filename in files:
-        urls.append(urljoin(base_url, filename))
-
-    return urls
+    return [urljoin(base_url, filename) for filename in files]
 
 
 # =========================
@@ -62,12 +57,9 @@ def get_dat_files():
 def read_dat_file(url):
     response = requests.get(url, timeout=30)
     response.raise_for_status()
-
     text = response.text
     lines = text.splitlines()
-
     station_name = lines[0].strip()
-
     parts = lines[2].split()
     latitude = float(parts[1])
     longitude = float(parts[3])
@@ -83,20 +75,17 @@ def read_dat_file(url):
         "station_pressure",
         "temperature",
         "wind_speed",
-        "wind_direction"
-    ]
+        "wind_direction"]
 
     df = pd.read_csv(
         StringIO(text),
         sep=r"\s+",
         skiprows=7,
         names=columns,
-        na_values=-999
-    )
+        na_values=-999)
 
     df["time"] = pd.to_datetime(
-        df[["year", "month", "day", "hour", "minute"]]
-    )
+        df[["year", "month", "day", "hour", "minute"]])
 
     df = df.set_index("time")
     df = df.drop(columns=["year", "month", "day", "hour", "minute"])
@@ -122,42 +111,39 @@ def apply_metadata(ds, station_name, latitude, longitude, height):
     ds["latitude"].attrs = {
         "standard_name": station_meta["latitude"]["standard_name"],
         "long_name": station_meta["latitude"]["long_name"],
-        "units": station_meta["latitude"]["units"]
-    }
+        "units": station_meta["latitude"]["units"]}
 
     ds["longitude"].attrs = {
         "standard_name": station_meta["longitude"]["standard_name"],
         "long_name": station_meta["longitude"]["long_name"],
-        "units": station_meta["longitude"]["units"]
-    }
+        "units": station_meta["longitude"]["units"]}
 
     ds["height"].attrs = {
         "standard_name": station_meta["height"]["standard_name"],
         "long_name": station_meta["height"]["long_name"],
         "units": station_meta["height"]["units"],
         "positive": station_meta["height"]["positive"],
-        "axis": station_meta["height"]["axis"]
-    }
+        "axis": station_meta["height"]["axis"]}
 
     ds["time"].attrs = {
         "standard_name": "time",
         "long_name": "time",
-        "units_metadata": "leap_seconds: unknown"
-    }
+        "units_metadata": "leap_seconds: unknown"}
 
     # -------------------------
-    # Variable metadata - if the variable exist in the dataset, apply metadata 
+    # Variable metadata - only applies if the variable exists in the dataset
     # -------------------------
     for var in variable_meta:
         if var in ds:
             ds[var].attrs = variable_meta[var]
 
     # -------------------------
-    # Global metadata - add metadata only if the value is defined
-    # Only write values that are not empty
+    # Global metadata - only applies if the value is not empty, and formats the value with the station name if it's a string
     # -------------------------
     for key, value in global_meta.items():
         if value != "":
+            if isinstance(value, str):
+                value = value.format(station_name=station_name)
             ds.attrs[key] = value
 
     # -------------------------
@@ -173,17 +159,18 @@ def apply_metadata(ds, station_name, latitude, longitude, height):
     ds.attrs["geospatial_bounds"] = f"POINT ({longitude} {latitude})"
     ds.attrs["geospatial_vertical_min"] = float(height)
     ds.attrs["geospatial_vertical_max"] = float(height)
-
     ds.attrs["geospatial_vertical_positive"] = station_meta["height"]["positive"]
 
-    ds.attrs["time_coverage_start"] = str(ds.time.values[0])
-    ds.attrs["time_coverage_end"] = str(ds.time.values[-1])
+    start_time = pd.to_datetime(ds.time.values[0])
+    end_time = pd.to_datetime(ds.time.values[-1])
+    ds.attrs["time_coverage_start"] = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+    ds.attrs["time_coverage_end"] = end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+    duration = (end_time - start_time).days + 1
+    ds.attrs["time_coverage_duration"] = f"P{duration}D"
 
     ds.attrs["date_created"] = pd.Timestamp.now("UTC").strftime("%Y-%m-%dT%H:%M:%SZ")
 
-
     return ds
-
 
 
 # =========================
@@ -201,8 +188,6 @@ def save_monthly_netcdf(df, station_name, latitude, longitude, height, category)
         ds = apply_metadata(ds, station_name, latitude, longitude, height)
 
         safe_station_name = station_name.replace(" ", "_")
-        dataset_id = f"{safe_station_name}_{year}_{month:02d}"
-        ds.attrs["id"] = dataset_id
         ds.attrs["time_coverage_resolution"] = "PT1H"
 
         category_folder = os.path.join(OUTPUT_DIR, category)
@@ -214,22 +199,9 @@ def save_monthly_netcdf(df, station_name, latitude, longitude, height, category)
         filename = f"{safe_station_name}_{year}_{month:02d}.nc"
         output_path = os.path.join(year_folder, filename)
 
-        # if file already exists, compare before overwriting
-        if os.path.exists(output_path):
-            old_ds = xr.open_dataset(output_path)
-
-            old_df = old_ds.to_dataframe()
-            new_df = ds.to_dataframe()
-
-            if old_df.equals(new_df):
-                print(f"No changes in {filename}, skipping...")
-                old_ds.close()
-                continue
-
-            old_ds.close()
-
         # save only if new or changed
         ds.to_netcdf(output_path)
+        ds.close()
         print(f"Saved {output_path}")
 
 # =========================
