@@ -184,7 +184,6 @@ def save_monthly_netcdf(df, station_name, latitude, longitude, height, category)
         ds = apply_metadata(ds, station_name, latitude, longitude, height)
 
         safe_station_name = station_name.replace(" ", "_")
-        ds.attrs["time_coverage_resolution"] = "PT1H"
 
         category_folder = os.path.join(OUTPUT_DIR, category)
         station_folder = os.path.join(category_folder, safe_station_name)
