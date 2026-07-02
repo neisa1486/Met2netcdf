@@ -127,8 +127,7 @@ def apply_metadata(ds, station_name, latitude, longitude, height):
 
     ds["time"].attrs = {
         "standard_name": "time",
-        "long_name": "time",
-        "units_metadata": "leap_seconds: unknown"}
+        "long_name": "time"}
 
     # -------------------------
     # Variable metadata - only applies if the variable exists in the dataset
@@ -184,7 +183,6 @@ def save_monthly_netcdf(df, station_name, latitude, longitude, height, category)
         ds = apply_metadata(ds, station_name, latitude, longitude, height)
 
         safe_station_name = station_name.replace(" ", "_")
-        ds.attrs["time_coverage_resolution"] = "PT1H"
 
         category_folder = os.path.join(OUTPUT_DIR, category)
         station_folder = os.path.join(category_folder, safe_station_name)
