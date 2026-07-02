@@ -149,7 +149,6 @@ def apply_metadata(ds, station_name, latitude, longitude, height):
     # -------------------------
     # Dataset-specific metadata
     # -------------------------
-    ds.attrs["station_name"] = station_name
 
     ds.attrs["geospatial_lat_min"] = float(latitude)
     ds.attrs["geospatial_lat_max"] = float(latitude)
@@ -165,9 +164,6 @@ def apply_metadata(ds, station_name, latitude, longitude, height):
     end_time = pd.to_datetime(ds.time.values[-1])
     ds.attrs["time_coverage_start"] = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
     ds.attrs["time_coverage_end"] = end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-    duration = (end_time - start_time).days + 1
-    ds.attrs["time_coverage_duration"] = f"P{duration}D"
-
     ds.attrs["date_created"] = pd.Timestamp.now("UTC").strftime("%Y-%m-%dT%H:%M:%SZ")
 
     return ds
@@ -199,8 +195,16 @@ def save_monthly_netcdf(df, station_name, latitude, longitude, height, category)
         filename = f"{safe_station_name}_{year}_{month:02d}.nc"
         output_path = os.path.join(year_folder, filename)
 
-        # save only if new or changed
-        ds.to_netcdf(output_path)
+        #Encoding settings for NetCDF4 output
+        encoding = {}
+        for var in ds.data_vars:
+            encoding[var] = {"_FillValue": -999.0}
+        
+        encoding["time"] = {
+            "dtype": "int32"}
+
+        #Saving NetCDF file with specified encoding
+        ds.to_netcdf(output_path, encoding=encoding)
         ds.close()
         print(f"Saved {output_path}")
 

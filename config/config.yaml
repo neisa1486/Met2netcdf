@@ -2,7 +2,7 @@ input:
   category: "SURFACE"
   base_url: "https://legacy.bas.ac.uk/met/READER/ANTARCTIC_METEOROLOGICAL_DATA/SURFACE/"
   files:
-    - "Asuka_surface.dat"
+    - "Neumayer_surface.dat"
 
 
 output:
@@ -38,14 +38,12 @@ metadata:
   global:
     title: "{station_name} surface meteorological observations"
     summary: "Historical surface meteorological observations from {station_name}, provided through the BAS READER Antarctic Meteorological Data service."
+    institution: "British Antarctic Survey"
 
     keywords: "GCMDSK: EARTH SCIENCE > ATMOSPHERE > ATMOSPHERIC TEMPERATURE > SURFACE TEMPERATURE, Antarctica, surface meteorology"
     keywords_vocabulary: "GCMDSK: GCMD Science Keywords: https://gcmd.earthdata.nasa.gov/kms/concepts/concept_scheme/sciencekeywords"
     license: "http://spdx.org/licenses/CC-BY-4.0 (CC-BY-4.0)"
-    spatial_representation: "fixed station"
-    geospatial_coverage: "single point"
     geospatial_bounds_crs: "EPSG:4326"
-    geospatial_bounds_vertical_crs: "EPSG:5773"
 
     creator_type: "person"
     creator_name: "Steve Colwell"
@@ -69,7 +67,6 @@ metadata:
     Conventions: "CF-1.11, ACDD-1.3"
     featureType: "timeSeries"
     source: "Original source data provided by the British Antarctic Survey READER Antarctic Meteorological Data service"
-    standard_name_vocabulary: "CF Standard Name Table v92"
 
     comment: "Historical Antarctic meteorological observations. Missing values and observational completeness may vary"
     project: "READER Antarctic Data for Environmental Research"
@@ -104,5 +101,5 @@ metadata:
     wind_direction:
       long_name: "Wind direction"
       standard_name: "wind_from_direction"
-      units: "degree"
+      units: "degrees"
       coverage_content_type: "physicalMeasurement"
