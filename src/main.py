@@ -131,7 +131,7 @@ def apply_metadata(ds, station_name, latitude, longitude, height):
     }
 
     ds["time"].attrs = {
-        "standard_name": "time",
+        "standard_name": "time"}
     # -------------------------
     # Variable metadata - only applies if the variable exists in the dataset
     # -------------------------
