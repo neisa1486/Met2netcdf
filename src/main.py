@@ -28,6 +28,7 @@ STATE_FILE = os.path.join(BASE_DIR, config["state"]["file"])
 # STATE - Tracks remote source file changes to avoid unnecessary processing
 # =========================
 
+
 def load_state():
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE, "r", encoding="utf-8") as f:
@@ -44,6 +45,7 @@ def save_state(state):
 # GET FILE URLS FROM CONFIG
 # =========================
 
+
 def get_dat_files():
     base_url = config["input"]["base_url"]
     files = config["input"]["files"]
@@ -51,8 +53,9 @@ def get_dat_files():
 
 
 # =========================
-# READING THE .dat FILES 
+# READING THE .dat FILES
 # =========================
+
 
 def read_dat_file(url):
     response = requests.get(url, timeout=30)
@@ -75,26 +78,25 @@ def read_dat_file(url):
         "station_pressure",
         "temperature",
         "wind_speed",
-        "wind_direction"]
+        "wind_direction",
+    ]
 
     df = pd.read_csv(
-        StringIO(text),
-        sep=r"\s+",
-        skiprows=7,
-        names=columns,
-        na_values=-999)
+        StringIO(text), sep=r"\s+", skiprows=7, names=columns, na_values=-999
+    )
 
-    df["time"] = pd.to_datetime(
-        df[["year", "month", "day", "hour", "minute"]])
+    df["time"] = pd.to_datetime(df[["year", "month", "day", "hour", "minute"]])
 
     df = df.set_index("time")
     df = df.drop(columns=["year", "month", "day", "hour", "minute"])
 
     return df, station_name, latitude, longitude, height
 
+
 # =========================
 # APPLY METADATA
 # =========================
+
 
 def apply_metadata(ds, station_name, latitude, longitude, height):
     station_meta = config["metadata"]["station"]
@@ -111,24 +113,25 @@ def apply_metadata(ds, station_name, latitude, longitude, height):
     ds["latitude"].attrs = {
         "standard_name": station_meta["latitude"]["standard_name"],
         "long_name": station_meta["latitude"]["long_name"],
-        "units": station_meta["latitude"]["units"]}
+        "units": station_meta["latitude"]["units"],
+    }
 
     ds["longitude"].attrs = {
         "standard_name": station_meta["longitude"]["standard_name"],
         "long_name": station_meta["longitude"]["long_name"],
-        "units": station_meta["longitude"]["units"]}
+        "units": station_meta["longitude"]["units"],
+    }
 
     ds["height"].attrs = {
         "standard_name": station_meta["height"]["standard_name"],
         "long_name": station_meta["height"]["long_name"],
         "units": station_meta["height"]["units"],
         "positive": station_meta["height"]["positive"],
-        "axis": station_meta["height"]["axis"]}
+        "axis": station_meta["height"]["axis"],
+    }
 
     ds["time"].attrs = {
         "standard_name": "time",
-        "long_name": "time"}
-
     # -------------------------
     # Variable metadata - only applies if the variable exists in the dataset
     # -------------------------
@@ -169,8 +172,8 @@ def apply_metadata(ds, station_name, latitude, longitude, height):
 
 
 # =========================
-# SAVE MONTHLY NETCDF
-# =========================
+# SAVE MONTHLY NETCDF -
+
 
 def save_monthly_netcdf(df, station_name, latitude, longitude, height, category):
     grouped = df.groupby([df.index.year, df.index.month])
@@ -178,9 +181,6 @@ def save_monthly_netcdf(df, station_name, latitude, longitude, height, category)
     for (year, month), group in grouped:
         if group.empty:
             continue
-
-        ds = xr.Dataset.from_dataframe(group)
-        ds = apply_metadata(ds, station_name, latitude, longitude, height)
 
         safe_station_name = station_name.replace(" ", "_")
 
@@ -193,22 +193,46 @@ def save_monthly_netcdf(df, station_name, latitude, longitude, height, category)
         filename = f"{safe_station_name}_{year}_{month:02d}.nc"
         output_path = os.path.join(year_folder, filename)
 
-        #Encoding settings for NetCDF4 output
+        if os.path.exists(output_path):
+            ds_existing = xr.open_dataset(output_path)
+            last_time = pd.to_datetime(ds_existing.time.values[-1])
+            new_group = group[group.index > last_time]
+
+            if new_group.empty:
+                ds_existing.close()
+                continue
+
+            ds_new = xr.Dataset.from_dataframe(new_group)
+            ds_new = apply_metadata(ds_new, station_name, latitude, longitude, height)
+
+            combined = xr.concat([ds_existing, ds_new], dim="time")
+            combined = combined.sortby("time")
+
+            ds_existing.close()
+
+            ds = apply_metadata(combined, station_name, latitude, longitude, height)
+
+        else:
+            ds = xr.Dataset.from_dataframe(group)
+            ds = apply_metadata(ds, station_name, latitude, longitude, height)
+
+        ds.attrs["time_coverage_resolution"] = "PT1H"
+
         encoding = {}
         for var in ds.data_vars:
             encoding[var] = {"_FillValue": -999.0}
-        
-        encoding["time"] = {
-            "dtype": "int32"}
 
-        #Saving NetCDF file with specified encoding
-        ds.to_netcdf(output_path, encoding=encoding)
+        encoding["time"] = {"dtype": "int32"}
+        ds.to_netcdf(output_path, encoding=encoding, unlimited_dims=["time"])
+
         ds.close()
         print(f"Saved {output_path}")
+
 
 # =========================
 # RUN ONCE - Processes source files and creates or updates monthly NetCDF files when remote data has changed
 # =========================
+
 
 def run_once():
     state = load_state()
@@ -236,10 +260,10 @@ def run_once():
     save_state(state)
 
 
-
 # =========================
 # RUN FOREVER
 # =========================
+
 
 def run_forever():
     interval = config["schedule"]["interval_seconds"]

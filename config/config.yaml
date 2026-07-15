@@ -2,7 +2,7 @@ input:
   category: "SURFACE"
   base_url: "https://legacy.bas.ac.uk/met/READER/ANTARCTIC_METEOROLOGICAL_DATA/SURFACE/"
   files:
-    - "Neumayer_surface.dat"
+    - "Amundsen_Scott_surface.dat"
 
 
 output:

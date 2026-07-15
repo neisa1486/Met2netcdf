@@ -1,29 +1,34 @@
 # Antarctic Meteorological Data Converter
 
-This project retrieves meteorological observation data from the **British Antarctic Survey (BAS) READER dataset** and converts raw `.dat` files into monthly NetCDF files with metadata following CF conventions.
+This project retrieves meteorological observation data from the **British Antarctic Survey (BAS) READER dataset** and converts raw observation files into monthly NetCDF files with metadata following the **CF-1.11** and **ACDD-1.3** conventions.
 
+---
 
 ## Repository Structure
 
 ```text
-project/
+/
 
-├── src/
-│   └── main.py
-│
 ├── config/
 │   └── config.yaml
 │
+├── src/
+│   ├── main.py
+│   ├── downloader.py
+│   ├── parser.py
+│   ├── netcdf_writer.py
+│   ├── metadata.py
+│   ├── scheduler.py
+│   └── utils.py
+│
+├── data/                 # Generated NetCDF files
+│
 ├── environment.yaml
-│
 ├── .gitignore
-│
 └── README.md
 ```
 
-Generated output files are stored locally in the `data/` folder.
-
-Generated data files are excluded from version control.
+Generated NetCDF files are written to the `data/` directory and are excluded from version control.
 
 ---
 
@@ -31,7 +36,7 @@ Generated data files are excluded from version control.
 
 The project uses Conda for dependency management.
 
-Create the environment from the provided file:
+Create the environment:
 
 ```bash
 conda env create -f environment.yaml
@@ -40,76 +45,71 @@ conda env create -f environment.yaml
 Activate the environment:
 
 ```bash
-conda activate bas-reader-netcdf
+conda activate MET
 ```
 
-The `environment.yaml` file contains all required dependencies for running the project.
+The `environment.yaml` file contains all required dependencies.
 
 ---
 
 ## Configuration
 
-The program is configured through `config/config.yaml`.
-The `metadata` section in `config.yaml` defines station metadata, global dataset attributes, and variable-specific attributes written to the NetCDF output files.
+Project settings are defined in `config/config.yaml`.
 
-Before running the script, update the configuration file to define:
+The configuration specifies:
 
-- **category** → Select which BAS dataset category to use  
-  (`SURFACE`, `AWS`, `UPPER_AIR`, `POLENET_AWS`)
-
-- **base_url** → The URL where the source `.dat` files are located
-
-- **files** → The station data files you want to process
-
-- **output folder** → The local folder where generated NetCDF files will be stored
-
-- **schedule settings** → Choose whether the script should run once or continuously
+- dataset category
+- source URL
+- station files to process
+- output directory
+- scheduling options
+- metadata written to the NetCDF files
 
 Example:
 
 ```yaml
 input:
-  category: "SURFACE"
-  base_url: "https://legacy.bas.ac.uk/met/READER/ANTARCTIC_METEOROLOGICAL_DATA/SURFACE/"
+  category: SURFACE
+  base_url: https://legacy.bas.ac.uk/met/READER/ANTARCTIC_METEOROLOGICAL_DATA/SURFACE/
   files:
-    - "Asuka_surface.dat"
+    - Amundsen_Scott_surface.dat
 
 output:
-  folder: "data/"
+  folder: data/
 
 schedule:
   enabled: false
   interval_seconds: 30
 ```
 
-If `schedule.enabled` is set to `false`, the script runs once.
+If `schedule.enabled` is `false`, the program runs once.
 
-If `schedule.enabled` is set to `true`, the script continuously checks for updated source files at the specified interval.
+If `true`, it periodically checks the source files for updates and regenerates affected NetCDF files.
+
+---
 
 ## Running the Program
 
-Run the script with:
+Run:
 
 ```bash
 python src/main.py
 ```
 
-The script will:
+The program will:
 
-1. Check whether the remote source file has changed  
-2. Download the `.dat` file  
-3. Parse meteorological observations  
-4. Convert observations into a pandas DataFrame  
-5. Group data by year and month  
-6. Convert monthly data into NetCDF files  
-7. Save the output locally  
+1. Check whether the source data has changed
+2. Download the observation file if needed
+3. Parse the observations into a pandas DataFrame
+4. Group the data into monthly datasets
+5. Create or update monthly CF-compliant NetCDF files
+6. Save the files to the configured output directory
 
 ---
 
-
 ## Output
 
-The program creates monthly NetCDF files organized as:
+Monthly NetCDF files are written to:
 
 ```text
 data/<category>/<station>/<year>/
@@ -118,14 +118,32 @@ data/<category>/<station>/<year>/
 Example:
 
 ```text
-data/SURFACE/Adelaide/1990/Adelaide_1990_01.nc
+data/SURFACE/Amundsen_Scott/2026/Amundsen_Scott_2026_07.nc
 ```
 
-Generated data files are local output and should not be stored in the Git repository.
+Each NetCDF file contains:
+
+- monthly observations
+- station metadata
+- CF-1.11 compliant metadata
+- recommended ACDD-1.3 discovery metadata
+
+Generated files are local output and are not intended to be committed to the repository.
+
+---
+
+## Standards
+
+The generated NetCDF files are designed to follow:
+
+- CF Conventions 1.11
+- ACDD 1.3
+
+The files have been validated using the IOOS Compliance Checker.
 
 ---
 
 ## Input Data Source
 
-Data is provided by the **British Antarctic Survey READER Project**.
+Observation data are provided by the **British Antarctic Survey (BAS) READER Project**.
 
